@@ -1,0 +1,66 @@
+==== LVIV RP HUD - INTEGRATION GUIDE ====
+
+This document explains how to integrate the Lviv RP HUD with your SA-MP server.
+
+1. INSTALLATION
+
+   a. Copy all HUD files (index.html, styles.css, script.js) to a folder accessible by your CEF plugin
+      Example: /scriptfiles/cef/lviv_hud/
+
+   b. Add lviv_hud_controller.pwn to your gamemode's /pawno/include/ directory
+
+   c. Include the file in your gamemode:
+      #include <lviv_hud_controller>
+
+   d. Modify lviv_hud_controller.pwn to match your CEF plugin:
+      - Uncomment the correct #include for your CEF plugin
+      - Modify the browser creation function to match your plugin
+      - Set the correct HUD_URL path
+
+2. CUSTOMIZING THE HUD
+
+   a. You can modify styles.css to change colors, sizes, and positions
+   
+   b. To add custom elements, edit index.html and update script.js accordingly
+
+3. DEBUGGING
+
+   a. Enable DEBUG mode in script.js to see console messages
+   
+   b. Test in a browser first by opening index.html directly
+   
+   c. If the HUD doesn't appear in-game:
+      - Check your CEF plugin is working with other pages
+      - Verify the file path in HUD_URL is correct
+      - Check browser console for JavaScript errors
+
+4. COMPATIBILITY
+
+   The HUD works with most CEF plugins including:
+   - CEFOF
+   - SAMPSON
+   - SAMP-CEF
+
+5. FUNCTIONS YOU CAN USE FROM YOUR GAMEMODE
+
+   SendHUDNotification(playerid, const message[], const type[] = "info")
+   - Sends a notification to the player's HUD
+   - Types: "info", "money", "success", "warning", "error"
+
+6. CUSTOM DATA
+
+   If you want to show custom data on the HUD (e.g., hunger):
+   - Create your own data storage and getter functions
+   - Modify the UpdatePlayerHUD function to include this data
+   - Update the JSON format to include your custom fields
+
+7. TROUBLESHOOTING
+
+   - If default HUD elements are still visible, check the DisableDefaultHUD function
+     and make sure it's being called correctly.
+   
+   - If data isn't updating, verify that UpdatePlayerHUD is being called regularly
+     and your hooks are set up correctly.
+   
+   - For browser-specific issues, check the browser console in development mode.
+

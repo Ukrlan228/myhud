@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SAMP Мінікарта</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background-color: transparent;
+    }
+    
+    .minimap-container {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      width: 250px;
+      height: 250px;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+    
+    .minimap {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(to bottom right, rgba(55, 65, 81, 0.7), rgba(17, 24, 39, 0.7));
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(8px);
+    }
+    
+    .map-grid {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      grid-template-rows: repeat(10, 1fr);
+    }
+    
+    .map-grid::before,
+    .map-grid::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+    }
+    
+    .map-grid::before {
+      background-image: linear-gradient(to right, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+      background-size: calc(100% / 10) 100%;
+    }
+    
+    .map-grid::after {
+      background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+      background-size: 100% calc(100% / 10);
+    }
+    
+    .map-roads {
+      position: absolute;
+      inset: 0;
+    }
+    
+    .road-h, .road-v {
+      position: absolute;
+      background-color: rgba(107, 114, 128, 0.8);
+    }
+    
+    .road-h {
+      height: 4px;
+      left: 0;
+      right: 0;
+      transform: translateY(-50%);
+    }
+    
+    .road-v {
+      width: 4px;
+      top: 0;
+      bottom: 0;
+      transform: translateX(-50%);
+    }
+    
+    .map-buildings {
+      position: absolute;
+      inset: 0;
+    }
+    
+    .building {
+      position: absolute;
+      background-color: rgba(180, 83, 9, 0.5);
+      border: 1px solid rgba(146, 64, 14, 0.5);
+      border-radius: 2px;
+    }
+    
+    .player-marker {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background-color: white;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.3);
+      z-index: 10;
+    }
+    
+    .player-direction {
+      position: absolute;
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 10px solid white;
+      transform: translate(-50%, -100%) rotate(0deg);
+      transform-origin: bottom center;
+      z-index: 11;
+    }
+    
+    .player-radius {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 9;
+    }
+    
+    .other-player {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background-color: #f59e0b;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 8;
+    }
+    
+    .map-zones {
+      position: absolute;
+      inset: 0;
+    }
+    
+    .zone {
+      position: absolute;
+      border: 1px dashed rgba(255, 255, 255, 0.2);
+      background-color: rgba(255, 255, 255, 0.05);
+      z-index: 5;
+    }
+    
+    .zone-name {
+      position: absolute;
+      font-size: 8px;
+      color: rgba(255, 255, 255, 0.7);
+      text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+      white-space: nowrap;
+      z-index: 6;
+    }
+    
+    .map-compass {
+      position: absolute;
+      bottom: 5px;
+      left: 0;
+      right: 0;
+      height: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent);
+      z-index: 12;
+    }
+    
+    .compass-direction {
+      font-size: 10px;
+      font-weight: bold;
+      color: #f59e0b;
+      margin: 0 15px;
+    }
+    
+    .map-info {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), transparent);
+      padding: 5px;
+      border-radius: 5px;
+      z-index: 12;
+    }
+    
+    .map-info-text {
+      font-size: 10px;
+      color: white;
+    }
+    
+    .map-zoom {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      z-index: 12;
+    }
+    
+    .zoom-btn {
+      width: 20px;
+      height: 20px;
+      background-color: rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 3px;
+      color: white;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    
+    .zoom-btn:hover {
+      background-color: rgba(0, 0, 0, 0.8);
+    }
+    
+    @keyframes pulse {
+      0%, 100% {
+        box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.3);
+      }
+      50% {
+        box-shadow: 0 0 15px 4px rgba(255, 255, 255, 0.5);
+      }
+    }
+    
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="minimap-container">
+    <div class="minimap">
+      <div class="map-grid"></div>
+      
+      <div class="map-roads">
+        <!-- Main roads -->
+        <div class="road-h" style="top: 50%"></div>
+        <div class="road-v" style="left: 50%"></div>
+        <div class="road-h" style="top: 25%"></div>
+        <div class="road-h" style="top: 75%"></div>
+        <div class="road-v" style="left: 25%"></div>
+        <div class="road-v" style="left: 75%"></div>
+      </div>
+      
+      <div class="map-buildings">
+        <!-- Sample buildings -->
+        <div class="building" style="top: 20%; left: 20%; width: 15%; height: 15%;"></div>
+        <div class="building" style="top: 20%; right: 20%; width: 10%; height: 20%;"></div>
+        <div class="building" style="bottom: 20%; left: 25%; width: 10%; height: 10%;"></div>
+        <div class="building" style="bottom: 25%; right: 25%; width: 15%; height: 10%;"></div>
+        <div class="building" style="top: 45%; left: 55%; width: 12%; height: 18%;"></div>
+      </div>
+      
+      <div class="map-zones">
+        <!-- Sample zones -->
+        <div class="zone" style="top: 10%; left: 10%; width: 30%; height: 30%;"></div>
+        <div class="zone-name" style="top: 25%; left: 25%;">Центр міста</div>
+        
+        <div class="zone" style="top: 50%; right: 10%; width: 25%; height: 40%;"></div>
+        <div class="zone-name" style="top: 70%; right: 22%;">Промзона</div>
+      </div>
+      
+      <!-- Player markers -->
+      <div class="player-marker pulse" id="player-marker"></div>
+      <div class="player-direction" id="player-direction"></div>
+      <div class="player-radius" id="player-radius"></div>
+      
+      <!-- Other players (will be added dynamically) -->
+      <div id="other-players"></div>
+      
+      <!-- Compass -->
+      <div class="map-compass">
+        <span class="compass-direction">W</span>
+        <span class="compass-direction">N</span>
+        <span class="compass-direction">E</span>
+        <span class="compass-direction">S</span>
+      </div>
+      
+      <!-- Map info -->
+      <div class="map-info">
+        <span class="map-info-text" id="zone-info">Центр міста</span>
+      </div>
+      
+      <!-- Zoom controls -->
+      <div class="map-zoom">
+        <div class="zoom-btn" id="zoom-in">+</div>
+        <div class="zoom-btn" id="zoom-out">-</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="minimap.js"></script>
+</body>
+</html>
+
