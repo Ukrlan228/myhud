@@ -20,6 +20,9 @@ let notifications = [
 // Debug mode - set to true to see messages in browser console
 const DEBUG = true
 
+// Declare cef variable if it's not already defined (e.g., by the game environment)
+let cef
+
 // Initialize HUD
 document.addEventListener("DOMContentLoaded", () => {
   // Update initial values
@@ -43,8 +46,15 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("Lviv RP HUD initialized and ready")
   }
 
-  // For testing: send ready signal to SAMP
-  sendToSamp({ type: "hudReady" })
+  // Send ready signal to SAMP using CEF API
+  if (typeof cef !== "undefined") {
+    cef.emit("hudEvent", "hudReady")
+    if (DEBUG) console.log("Sent hudReady event using CEF API")
+  } else {
+    // Fallback for testing in browser
+    window.postMessage(JSON.stringify({ type: "hudReady" }), "*")
+    if (DEBUG) console.log("Sent hudReady event using postMessage (browser testing)")
+  }
 })
 
 // Update player stats
@@ -256,61 +266,83 @@ function updateClock() {
 
 // Setup SAMP message handler
 function setupSampMessageHandler() {
+  // Method 1: Using CEF API (for actual SAMP)
+  if (typeof cef !== "undefined") {
+    cef.on("window.postMessage", (data, origin) => {
+      handleMessage(data)
+    })
+
+    if (DEBUG) console.log("Set up message handler using CEF API")
+  }
+
+  // Method 2: Using window.postMessage (for browser testing)
   window.addEventListener("message", (event) => {
     if (event.data && typeof event.data === "string") {
       try {
         const data = JSON.parse(event.data)
-
-        if (DEBUG) {
-          console.log("Received message from SAMP:", data)
-        }
-
-        // Handle different message types
-        switch (data.type) {
-          case "playerUpdate":
-            // Update player data
-            playerData = { ...playerData, ...data.payload }
-            updatePlayerStats()
-            updateWantedLevel()
-            updateWeaponInfo()
-            break
-
-          case "notification":
-            // Add new notification
-            addNotification(data.message, data.notificationType || "info")
-            break
-
-          case "ping":
-            // Respond to ping
-            window.postMessage(JSON.stringify({ type: "pong" }), "*")
-            break
-
-          case "init":
-            // Initialize with data
-            playerData = { ...playerData, ...data.payload }
-            updatePlayerStats()
-            updateWantedLevel()
-            updateWeaponInfo()
-            addNotification("HUD з'єднано з сервером", "success")
-            break
-        }
+        handleMessage(data)
       } catch (e) {
-        console.error("Error processing message from SAMP:", e)
+        console.error("Error parsing message:", e)
       }
     }
   })
+}
 
-  // Send ready signal
-  window.postMessage(JSON.stringify({ type: "hudReady" }), "*")
+// Handle messages from SAMP
+function handleMessage(data) {
+  if (DEBUG) {
+    console.log("Received message:", data)
+  }
+
+  // Handle different message types
+  switch (data.type) {
+    case "playerUpdate":
+      // Update player data
+      playerData = { ...playerData, ...data.payload }
+      updatePlayerStats()
+      updateWantedLevel()
+      updateWeaponInfo()
+      break
+
+    case "notification":
+      // Add new notification
+      addNotification(data.message, data.notificationType || "info")
+      break
+
+    case "ping":
+      // Respond to ping
+      sendToSamp({ type: "pong" })
+      break
+
+    case "init":
+      // Initialize with data
+      playerData = { ...playerData, ...data.payload }
+      updatePlayerStats()
+      updateWantedLevel()
+      updateWeaponInfo()
+      addNotification("HUD з'єднано з сервером", "success")
+      break
+  }
 }
 
 // Function to send data back to SAMP
 function sendToSamp(data) {
-  window.postMessage(JSON.stringify(data), "*")
+  if (typeof cef !== "undefined") {
+    // Using CEF API
+    cef.emit("hudEvent", JSON.stringify(data))
+  } else {
+    // Fallback for browser testing
+    window.postMessage(JSON.stringify(data), "*")
+  }
 
   if (DEBUG) {
     console.log("Sent to SAMP:", data)
   }
+}
+
+// Request update from server (can be called periodically)
+function requestUpdate() {
+  sendToSamp({ type: "requestUpdate" })
 }
 
 // Add error handling
